@@ -64,7 +64,7 @@ jobs:
           context: vllm
           file: ./${{ matrix.dockerfile }}
           target: ${{ matrix.docker_target }}
-          platforms: linux/${{ matrix.arch.name }}
+          platforms: linux/${{ matrix.arch }}
           pull: true # Pull new version of base image, always; avoid bit-rot
           push: true
           labels: |
