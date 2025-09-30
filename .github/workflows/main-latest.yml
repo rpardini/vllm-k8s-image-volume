@@ -72,7 +72,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: vllm
-          file: ${{ matrix.dockerfile }}
+          file: vllm/${{ matrix.dockerfile }}
           target: ${{ matrix.docker_target }}
           platforms: linux/${{ matrix.arch }}
           pull: true # Pull new version of base image, always; avoid bit-rot
