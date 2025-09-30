@@ -18,6 +18,7 @@ env:
 jobs:
 
   build-vllm:
+    if: false # too heavy
     name: "vLLM ${{ matrix.build_id }}"
     runs-on: ${{ matrix.runner }}
     strategy:
@@ -89,7 +90,7 @@ jobs:
   # Lets then use it to download models from HuggingFace and bake them into a FROM scratch image
 
   models:
-    needs: [ build-vllm ]
+    #needs: [ build-vllm ]
     name: "Model ${{ matrix.model_id }}"
     runs-on: ${{ matrix.runner }}
     strategy:
@@ -101,7 +102,7 @@ jobs:
             arch: amd64
             runner: ubuntu-latest
             docker_context: hf
-            dockerfile: hf/Dockerfile
+            dockerfile: Dockerfile # inside docker_context
             docker_build_args: |
               TOOL_IMAGE=ghcr.io/${{ github.repository }}:cpu-amd64-noavx512-latest
               HF_MODEL=TinyLlama/TinyLlama-1.1B-Chat-v1.0
