@@ -3,7 +3,7 @@ FROM ${TOOL_IMAGE} AS builder
 
 ARG HF_MODEL="TinyLlama/TinyLlama-1.1B-Chat-v1.0"
 
-RUN huggingface-cli download ${HF_MODEL}
+RUN huggingface-cli download ${HF_MODEL} && rm -rfv /root/.cache/huggingface/xet
 
 RUN du -h -x -d 3 /root/.cache/huggingface || true
 
