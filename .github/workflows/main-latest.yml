@@ -88,7 +88,7 @@ jobs:
   # Once we have ghcr.io/${{ github.repository }}:${{ matrix.build_id }}-latest for the amd64 cpu no-avx case, eg:
   # ghcr.io/${{ github.repository }}:cpu-amd64-noavx512-latest
   # Lets then use it to download models from HuggingFace and bake them into a FROM scratch image
-
+  #          TOOL_IMAGE=ghcr.io/${{ github.repository }}:cpu-amd64-noavx512-latest
   models:
     #needs: [ build-vllm ]
     name: "Model ${{ matrix.model_id }}"
@@ -100,31 +100,30 @@ jobs:
           - model_id: tinyllama-1.1b-chat
             arch: amd64
             runner: ubuntu-latest
-            docker_context: hf
+            docker_context: hf-files
             dockerfile: Dockerfile # inside docker_context
             docker_build_args: |
-              TOOL_IMAGE=ghcr.io/${{ github.repository }}:cpu-amd64-noavx512-latest
               HF_MODEL=TinyLlama/TinyLlama-1.1B-Chat-v1.0
           - model_id: qwen3-0.6b
             arch: amd64
             runner: ubuntu-latest
-            docker_context: hf
+            docker_context: hf-files
             dockerfile: Dockerfile # inside docker_context
             docker_build_args: |
-              TOOL_IMAGE=ghcr.io/${{ github.repository }}:cpu-amd64-noavx512-latest
               HF_MODEL=Qwen/Qwen3-0.6B
           - model_id: qwen2-vl-7b-instruct
             arch: amd64
             runner: ubuntu-latest
-            docker_context: hf
+            docker_context: hf-files
             dockerfile: Dockerfile # inside docker_context
+            clean_runner: true # Extra large, clean runner to have more disk space
             docker_build_args: |
-              TOOL_IMAGE=ghcr.io/${{ github.repository }}:cpu-amd64-noavx512-latest
               HF_MODEL=Qwen/Qwen2-VL-7B-Instruct
     steps:
 
       # Clean runner to have more disk space
       - name: Free Disk Space (Ubuntu)
+        if: ${{ matrix.clean_runner == true }}
         uses: jlumbroso/free-disk-space@main
         with:
           tool-cache: true
