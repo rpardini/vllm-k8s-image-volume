@@ -41,16 +41,9 @@ jobs:
         with:
           path: src
 
-      - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Docker Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }} # github username or org
-          password: ${{ secrets.GITHUB_TOKEN }}    # github actions builtin token. repo has to have pkg access.
+      # Setup buildx and login to ghcr.io
+      - { name: "Set up Docker Buildx", id: buildx, uses: docker/setup-buildx-action@v3 }
+      - { name: "Docker Login to GitHub Container Registry", uses: docker/login-action@v3, with: { registry: ghcr.io, username: "${{ github.repository_owner }}", password: "${{ secrets.GITHUB_TOKEN }}" } }
 
       # Checkout vllm source code from a specific tag: v0.10.2
       - name: Checkout vLLM source code
@@ -60,11 +53,10 @@ jobs:
           repository: vllm-project/vllm
           ref: ${{ matrix.vllm_tag }}
 
-      - name: Debug checkout contents
-        run: |
-          sudo apt update
-          sudo apt install tree file
-          tree .
+      #- name: Debug checkout contents
+      #  run: |
+      #    sudo apt update
+      #    sudo apt install tree file
 
       # docker build -f docker/Dockerfile.cpu --build-arg VLLM_CPU_AVX512BF16=false --build-arg VLLM_CPU_AVX512VNNI=false --build-arg VLLM_CPU_DISABLE_AVX512=true --tag vllm-cpu-env:mine --target vllm-openai .
       - name: Build and push ${{ matrix.build_id }}
@@ -90,3 +82,58 @@ jobs:
             VERSION=${{ github.run_number }}
             ${{ matrix.docker_build_args }}
           tags: ghcr.io/${{ github.repository }}:${{ matrix.build_id }}-latest
+
+
+  # Once we have ghcr.io/${{ github.repository }}:${{ matrix.build_id }}-latest for the amd64 cpu no-avx case, eg:
+  # ghcr.io/${{ github.repository }}:cpu-amd64-noavx512-latest
+  # Lets then use it to download models from HuggingFace and bake them into a FROM scratch image
+
+  models:
+    needs: [ build-vllm ]
+    name: "Model ${{ matrix.model_id }}"
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false # let other jobs try to complete if one fails
+      matrix:
+        include:
+          - model_id: tinyllama-1.1b-chat
+            #hf_model: "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+            arch: amd64
+            runner: ubuntu-latest
+            docker_context: hf
+            dockerfile: hf/Dockerfile
+            docker_build_args: |
+              TOOL_IMAGE=ghcr.io/${{ github.repository }}:cpu-amd64-noavx512-latest
+              HF_MODEL=TinyLlama/TinyLlama-1.1B-Chat-v1.0
+    steps:
+
+      - name: Checkout this repo at the root
+        uses: actions/checkout@v5
+
+      # Setup buildx and login to ghcr.io
+      - { name: "Set up Docker Buildx", id: buildx, uses: docker/setup-buildx-action@v3 }
+      - { name: "Docker Login to GitHub Container Registry", uses: docker/login-action@v3, with: { registry: ghcr.io, username: "${{ github.repository_owner }}", password: "${{ secrets.GITHUB_TOKEN }}" } }
+
+      - name: Build and push ${{ matrix.model_id }}
+        id: docker_build
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.docker_context }}
+          file: ${{ matrix.docker_context }}/${{ matrix.dockerfile }}
+          #platforms: linux/${{ matrix.arch }}
+          pull: false
+          push: true
+          labels: |
+            org.opencontainers.image.title=${{ github.repository }}-${{ github.run_number }}
+            org.opencontainers.image.description=${{ github.event.repository.description }}
+            org.opencontainers.image.url=${{ github.event.repository.html_url }}
+            org.opencontainers.image.source=${{ github.event.repository.clone_url }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.licenses=${{ github.event.repository.license.spdx_id }}
+          #cache-from: type=gha,scope=${{ matrix.build_id }} # all-automatic Github Actions caching
+          #cache-to: type=gha,mode=max,scope=${{ matrix.build_id }}
+          build-args: |
+            VERSION=${{ github.run_number }}
+            ${{ matrix.docker_build_args }}
+          tags: ghcr.io/${{ github.repository }}:${{ matrix.model_id }}-latest
+
