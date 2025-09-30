@@ -98,7 +98,6 @@ jobs:
       matrix:
         include:
           - model_id: tinyllama-1.1b-chat
-            #hf_model: "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
             arch: amd64
             runner: ubuntu-latest
             docker_context: hf
@@ -106,6 +105,22 @@ jobs:
             docker_build_args: |
               TOOL_IMAGE=ghcr.io/${{ github.repository }}:cpu-amd64-noavx512-latest
               HF_MODEL=TinyLlama/TinyLlama-1.1B-Chat-v1.0
+          - model_id: qwen3-0.6b
+            arch: amd64
+            runner: ubuntu-latest
+            docker_context: hf
+            dockerfile: Dockerfile # inside docker_context
+            docker_build_args: |
+              TOOL_IMAGE=ghcr.io/${{ github.repository }}:cpu-amd64-noavx512-latest
+              HF_MODEL=Qwen/Qwen3-0.6B
+          - model_id: qwen2-vl-7b-instruct
+            arch: amd64
+            runner: ubuntu-latest
+            docker_context: hf
+            dockerfile: Dockerfile # inside docker_context
+            docker_build_args: |
+              TOOL_IMAGE=ghcr.io/${{ github.repository }}:cpu-amd64-noavx512-latest
+              HF_MODEL=Qwen/Qwen2-VL-7B-Instruct
     steps:
 
       - name: Checkout this repo at the root
