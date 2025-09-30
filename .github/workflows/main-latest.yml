@@ -12,6 +12,9 @@ permissions:
   packages: write
   #actions: write # For keepalive
 
+env:
+  DEBIAN_FRONTEND: noninteractive
+
 jobs:
 
   build-vllm:
@@ -24,6 +27,7 @@ jobs:
           - build_id: cpu-amd64-noavx512
             arch: amd64
             runner: ubuntu-latest
+            vllm_tag: v0.10.2
             dockerfile: docker/Dockerfile.cpu
             docker_target: vllm-openai
             docker_build_args: |
@@ -49,12 +53,18 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}    # github actions builtin token. repo has to have pkg access.
 
       # Checkout vllm source code from a specific tag: v0.10.2
-      - name: Checkout this repo
+      - name: Checkout vLLM source code
         uses: actions/checkout@v5
         with:
           path: vllm
           repository: vllm-project/vllm
-          ref: v0.10.2
+          ref: ${{ matrix.vllm_tag }}
+
+      - name: Debug checkout contents
+        run: |
+          sudo apt update
+          sudo apt install tree file
+          tree .
 
       # docker build -f docker/Dockerfile.cpu --build-arg VLLM_CPU_AVX512BF16=false --build-arg VLLM_CPU_AVX512VNNI=false --build-arg VLLM_CPU_DISABLE_AVX512=true --tag vllm-cpu-env:mine --target vllm-openai .
       - name: Build and push ${{ matrix.build_id }}
@@ -62,7 +72,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: vllm
-          file: ./${{ matrix.dockerfile }}
+          file: ${{ matrix.dockerfile }}
           target: ${{ matrix.docker_target }}
           platforms: linux/${{ matrix.arch }}
           pull: true # Pull new version of base image, always; avoid bit-rot
